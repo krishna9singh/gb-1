@@ -6,6 +6,7 @@ const Topic = require("../models/topic");
 const stripe = require("stripe")(
   "sk_test_51NAGrZSEXlKwVDBNhya5wiyCmbRILf14f1Bk2uro1IMurrItZFsnmn7WNA0I5Q3RMnCVui1ox5v9ynOg3CGrFkHu00hLvIqqS1"
 );
+const Cart = require("../models/Cart");
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.site",
@@ -148,5 +149,57 @@ exports.details = async (req, res) => {
     }
   } catch (e) {
     res.status(400).json(e.message);
+  }
+};
+
+exports.createcartorder = async (req, res) => {
+  const { userId } = req.params;
+  const { quantity, taxes, deliverycharges, productId, total } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    } else {
+      const order = new Order({
+        buyerId: userId,
+        productId: productId,
+        quantity: quantity,
+        total: total,
+        orderId: Math.floor(Math.random() * 9000000) + 1000000,
+        taxes: taxes,
+        deliverycharges: deliverycharges,
+      });
+      await order.save();
+
+      await User.updateOne(
+        { _id: userId },
+        { $push: { puchase_history: order._id } }
+      );
+      res.status(200).json({ orderId: order._id, success: true });
+    }
+  } catch (e) {
+    res.status(400).json({ message: e.message, success: false });
+  }
+};
+
+exports.updatecartorder = async (req, res) => {
+  const { userId, orderId } = req.params;
+  const { paymentId, success } = req.body;
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    } else {
+      const o = await Order.findById(orderId);
+      await Order.updateOne(
+        { _id: o._id },
+        { $set: { currentStatus: success, paymentId: paymentId } }
+      );
+      await User.updateOne({ _id: user._id }, { $unset: { cart: [] } });
+      await res.status(200).json({ success: true });
+    }
+  } catch (e) {
+    res.status(400).json({ message: e.message, success: false });
   }
 };

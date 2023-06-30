@@ -201,6 +201,14 @@ exports.joinmember = async (req, res) => {
   if (!community) {
     res.status(400).json({ message: "Community not found" });
   } else {
+    let publictopic = [];
+    for (let i = 0; i < community.topics.length; i++) {
+      const topic = await Topic.findById({ _id: community.topics[i] });
+      if (topic.type === "public") {
+        publictopic.push(topic);
+      }
+    }
+
     const topic1 = await Topic.find(
       { community: community._id },
       { title: "All" }
@@ -218,7 +226,9 @@ exports.joinmember = async (req, res) => {
           success: false,
         });
       } else if (isSubscriber) {
-        res.status(201).json({ message: "Already Subscriber", success: false });
+        res
+          .status(201)
+          .json({ message: "Already Subscriber", success: false, publictopic });
       } else if (community.type === "public") {
         await Community.updateOne(
           { _id: comId },
@@ -290,7 +300,10 @@ exports.unjoinmember = async (req, res) => {
 //get community
 exports.getcommunity = async (req, res) => {
   const { comId, id } = req.params;
-  const community = await Community.findById(comId).populate("topics", "title");
+  const community = await Community.findById(comId).populate(
+    "topics",
+    "title type price"
+  );
   const user = await User.findById(id);
   try {
     if (!community) {

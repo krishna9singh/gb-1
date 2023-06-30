@@ -4,8 +4,8 @@ const { ObjectId } = mongoose.Schema;
 const OrderSchema = new mongoose.Schema(
   {
     buyerId: { type: ObjectId, ref: "User" },
-    productId: { type: ObjectId, ref: "Product" },
-    sellerId: { type: ObjectId, ref: "User" },
+    productId: [{ type: ObjectId, ref: "Product" }],
+    sellerId: [{ type: ObjectId, ref: "User" }],
     delivered: { type: Boolean, default: false },
     quantity: { type: Number, min: 1 },
     total: { type: Number, min: 0 },
@@ -19,6 +19,7 @@ const OrderSchema = new mongoose.Schema(
         "cancelled",
         "completed",
         "failed",
+        "success",
       ],
       default: "pending",
     },
@@ -32,6 +33,7 @@ const OrderSchema = new mongoose.Schema(
     },
     discountamount: { type: Number, min: 0 },
     finalprice: { type: Number, min: 0 },
+    paymentId: { type: String },
   },
   { timestamps: true }
 );

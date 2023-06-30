@@ -49,6 +49,8 @@ const productSchema = new mongoose.Schema({
   reviews: { type: Number, default: 0 },
   producthighlightskey: { type: [String] },
   producthighlightsvalue: { type: [String] },
+  productdetails: { type: String },
+  producthighlights: { type: String },
   percentoff: { type: Number, default: 0 },
   questions: { type: Number, default: 0 },
   type: { type: String },

@@ -94,7 +94,7 @@ exports.fetchorders = async (req, res) => {
         for (let j = 0; j < orders.length; j++) {
           const a = await generatePresignedUrl(
             "products",
-            orders[j].productId.images[0].toString(),
+            orders[j].productId[0].images[0].toString(),
             60 * 60
           );
           image.push(a);
@@ -123,7 +123,12 @@ exports.fetchcart = async (req, res) => {
     if (!user) {
       res.status(404).json({ message: "No user found", success: false });
     } else {
+      const ids = [];
       const image = [];
+      for (let j = 0; j < user.cart.length; j++) {
+        ids.push(user.cart[j].product._id);
+      }
+
       if (user) {
         for (let j = 0; j < user.cart.length; j++) {
           const a = await generatePresignedUrl(
@@ -156,6 +161,7 @@ exports.fetchcart = async (req, res) => {
         address: user.address,
         image,
         success: true,
+        ids,
       });
     }
   } catch (e) {

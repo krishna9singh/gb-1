@@ -3,6 +3,7 @@ const Message = require("../models/message");
 const Community = require("../models/community");
 const User = require("../models/userAuth");
 const Minio = require("minio");
+const Subscription = require("../models/Subscriptions");
 
 const minioClient = new Minio.Client({
   endPoint: "minio.grovyo.site",
@@ -26,6 +27,19 @@ async function generatePresignedUrl(bucketName, objectName, expiry = 604800) {
     throw new Error("Failed to generate presigned URL");
   }
 }
+
+//generate a random id
+const generateRandomId = () => {
+  let id = "";
+  const digits = "0123456789";
+
+  for (let i = 0; i < 17; i++) {
+    const randomIndex = Math.floor(Math.random() * digits.length);
+    id += digits[randomIndex];
+  }
+
+  return id;
+};
 
 //create a new topic
 exports.create = async (req, res) => {
@@ -93,7 +107,7 @@ exports.getmessages = async (req, res) => {
 
   try {
     const messages = await Message.find({ topicId: topicId })
-      .limit(20)
+      .limit(50)
       .sort({ createdAt: -1 })
       .populate("sender", "profilepic fullname isverified");
 
@@ -119,11 +133,12 @@ exports.getmessages = async (req, res) => {
     } else if (!user) {
       res.status(404).json({ message: "No User found", success: false });
     } else if (!community[0].members.includes(user._id)) {
-      res.status(400).json({
+      res.status(203).json({
         reversed,
         dps,
         message: "You are not the member of the Community",
-        success: false,
+        success: true,
+        issubs: false,
       });
     } else if (topic.type === "Private") {
       if (!topic.members.includes(user._id)) {
@@ -131,6 +146,8 @@ exports.getmessages = async (req, res) => {
           message: "You need to join this topic first",
           success: true,
           issubs: false,
+          reversed,
+          dps,
         });
       } else {
         res.status(200).json({ success: true, reversed, dps, issubs: true });
@@ -142,6 +159,8 @@ exports.getmessages = async (req, res) => {
       ) {
         res.status(400).json({
           message: "Unsubscribed",
+          reversed,
+          dps,
           success: true,
           topic,
           issubs: false,
@@ -169,7 +188,7 @@ exports.hiddenmes = async (req, res) => {
       const mes = await Message.find({
         comId: com._id,
         hidden: { $in: [user._id] },
-      });
+      }).populate("sender", "fullname isverified profilepic");
       res.status(200).json({ mes });
     } else {
       res
@@ -204,4 +223,69 @@ exports.newmessage = async (req, res) => {
   }
 };
 
+//topic order initiate
+exports.initiatetopic = async (req, res) => {
+  const { topicId } = req.params;
+  try {
+    const top = await Topic.findById(topicId);
+    if (top) {
+      let temp = generateRandomId();
+      let oId = `order_${temp}`;
+      const order = new Subscription({
+        topic: top._id,
+        validity: "1 month",
+        orderId: oId,
+      });
+      await order.save();
+      res.status(200).json({ orderId: order._id, success: true });
+    } else {
+      res.status(400).json({ success: false });
+    }
+  } catch (e) {
+    res.status(400).json({ message: e.message, success: false });
+  }
+};
+
 //join a topic
+exports.jointopic = async (req, res) => {
+  const { topicId, id, comId, orderId } = req.params;
+  const { paymentId, status } = req.body;
+  try {
+    const top = await Topic.findById(topicId);
+    const order = await Subscription.findById(orderId);
+    if (top && order) {
+      await Subscription.updateOne(
+        { _id: orderId },
+        { $set: { paymentId: paymentId, status: status } }
+      );
+
+      await Community.updateOne(
+        { _id: comId },
+        { $push: { members: id }, $inc: { memberscount: 1 } }
+      );
+
+      await User.updateOne(
+        { _id: id },
+        { $push: { communityjoined: comId }, $inc: { totalcom: 1 } }
+      );
+
+      await Topic.updateOne(
+        { _id: top._id },
+        { $push: { members: id }, $inc: { memberscount: 1 } }
+      );
+
+      await User.updateOne(
+        { _id: id },
+        {
+          $push: { topicsjoined: [top._id] },
+          $inc: { totaltopics: 1 },
+        }
+      );
+      res.status(200).json({ success: true });
+    } else {
+      res.status(400).json({ success: false });
+    }
+  } catch (e) {
+    res.status(400).json({ message: e.message, success: false });
+  }
+};

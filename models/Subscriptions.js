@@ -5,6 +5,9 @@ const SubscrpitionsSchema = new mongoose.Schema(
   {
     topic: { type: ObjectId, ref: "Topic" },
     validity: { type: String },
+    paymentId: { type: String },
+    status: { type: String },
+    orderId: { type: String },
   },
   { timestamps: true }
 );

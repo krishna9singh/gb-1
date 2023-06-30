@@ -143,7 +143,7 @@ exports.getad = async (req, res) => {
         {
           $match: {
             tags: { $in: user.interest },
-            location: { $eq: user.location },
+            // location: { $eq: user.location },
             status: { $eq: "Active" },
           },
         },

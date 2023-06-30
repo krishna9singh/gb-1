@@ -35,26 +35,29 @@ async function generatePresignedUrl(bucketName, objectName, expiry = 604800) {
 //Photo posting
 exports.createPhoto = async (req, res) => {
   const { userId, commId } = req.params;
-  const { title, desc } = req.body;
+  const { title, desc, tags } = req.body;
   const comm = await Community.findById(commId);
-  const image1 = req.files[0];
+  const image = req.files[0];
+
   const topic = await Topic.find({ community: commId }).find({
     title: "Posts",
   });
-  if (!image1) {
-    res.status(400).json({ message: "Must have one image" });
+  if (!image) {
+    res.status(400).json({ message: "Must have one image", success: false });
   } else if (comm.creator.toString() !== userId) {
-    res.status(400).json({ message: "You cannot post in this community." });
+    res
+      .status(400)
+      .json({ message: "You cannot post in this community.", success: false });
   } else {
     try {
       const uuidString = uuid();
-      if (image1) {
+      if (image) {
         const bucketName = "posts";
-        const objectName = `${Date.now()}_${uuidString}_${image1.originalname}`;
+        const objectName = `${Date.now()}_${uuidString}_${image.originalname}`;
         a1 = objectName;
-        a2 = image1.mimetype;
+        a2 = image.mimetype;
 
-        await sharp(image1.buffer)
+        await sharp(image.buffer)
           .jpeg({ quality: 50 })
           .toBuffer()
           .then(async (data) => {
@@ -70,7 +73,8 @@ exports.createPhoto = async (req, res) => {
           community: commId,
           sender: userId,
           post: objectName,
-          contenttype: image1.mimetype,
+          contenttype: image.mimetype,
+          tags: tags,
         });
         const ne = await p.save();
         await Community.updateOne(
@@ -82,10 +86,10 @@ exports.createPhoto = async (req, res) => {
           { $push: { posts: ne._id }, $inc: { postcount: 1 } }
         );
 
-        res.status(200).json(ne);
+        res.status(200).json({ ne, success: true });
       }
     } catch (e) {
-      res.status(500).json({ message: e.message });
+      res.status(500).json({ message: e.message, success: false });
     }
   }
 };
@@ -93,7 +97,7 @@ exports.createPhoto = async (req, res) => {
 //videos posting
 exports.createVideo = async (req, res) => {
   const { userId, commId } = req.params;
-  const { title, desc } = req.body;
+  const { title, desc, tags } = req.body;
   const { originalname, buffer, mimetype } = req.files[0];
   const comm = await Community.findById(commId);
   const topic = await Topic.find({ community: commId }).find({
@@ -102,9 +106,11 @@ exports.createVideo = async (req, res) => {
 
   const uuidString = uuid();
   if (!originalname) {
-    res.status(400).json({ message: "Please upload a video" });
+    res.status(400).json({ message: "Please upload a video", success: false });
   } else if (comm.creator.toString() !== userId) {
-    res.status(400).json({ message: "You cannot post in this community." });
+    res
+      .status(400)
+      .json({ message: "You cannot post in this community.", success: false });
   } else {
     try {
       const size = buffer.byteLength;
@@ -126,6 +132,7 @@ exports.createVideo = async (req, res) => {
         post: objectName,
         size: size,
         contenttype: mimetype,
+        tags: tags,
       });
       const ne = await v.save();
       await Community.updateOne(
@@ -137,9 +144,9 @@ exports.createVideo = async (req, res) => {
         { $push: { posts: ne._id }, $inc: { postcount: 1 } }
       );
 
-      res.status(200).json(ne);
+      res.status(200).json({ ne, success: true });
     } catch (e) {
-      res.status(500).json({ message: e.message });
+      res.status(500).json({ message: e.message, success: false });
     }
   }
 };
@@ -245,6 +252,17 @@ exports.fetchfeed = async (req, res) => {
         },
       },
     ]);
+    const liked = [];
+    for (let i = 0; i < post.length; i++) {
+      if (
+        post[i].likedby?.some((id) => id.toString() === user._id.toString())
+      ) {
+        liked.push(post[i]._id);
+      } else {
+        liked.push("not liked");
+      }
+    }
+
     const subs = [];
     for (let k = 0; k < post.length; k++) {
       const coms = await Community.findById(post[k].community);
@@ -252,15 +270,6 @@ exports.fetchfeed = async (req, res) => {
         subs.push("subscribed");
       } else {
         subs.push("unsubscribed");
-      }
-    }
-
-    const liked = [];
-    for (let i = 0; i < post.length; i++) {
-      if (post[i].likedby.includes(user._id)) {
-        liked.push(post[i]._id);
-      } else {
-        liked.push("not liked");
       }
     }
 
@@ -495,7 +504,6 @@ exports.joinedcom = async (req, res) => {
         })
           .populate("sender", "fullname")
           .sort({ createdAt: -1 })
-
           .limit(1);
         posts.push(post);
 
@@ -544,7 +552,7 @@ exports.joinedcom = async (req, res) => {
       }
 
       res.status(200).json({
-        data: { community, memdps, posts, dps, urls, liked },
+        data: { community, posts, dps, urls, liked, memdps },
         success: true,
       });
     }

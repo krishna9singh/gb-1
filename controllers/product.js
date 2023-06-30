@@ -197,7 +197,7 @@ exports.getaproduct = async (req, res) => {
   const product = await Product.findById(productId);
   try {
     if (!product) {
-      res.status(404).json({ message: "Product not found" });
+      res.status(404).json({ message: "Product not found", success: false });
     } else {
       const urls = [];
       for (let i = 0; i < product.images.length; i++) {
@@ -210,10 +210,10 @@ exports.getaproduct = async (req, res) => {
           urls.push(a);
         }
       }
-      res.status(200).json({ data: { product, urls } });
+      res.status(200).json({ data: { product, urls, success: true } });
     }
   } catch (e) {
-    res.status(400).json(e.message);
+    res.status(400).json({ message: e.message, success: false });
   }
 };
 
