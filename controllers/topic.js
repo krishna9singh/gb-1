@@ -107,7 +107,7 @@ exports.getmessages = async (req, res) => {
 
   try {
     const messages = await Message.find({ topicId: topicId })
-      .limit(50)
+      .limit(20)
       .sort({ createdAt: -1 })
       .populate("sender", "profilepic fullname isverified");
 
