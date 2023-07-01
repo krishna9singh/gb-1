@@ -185,7 +185,7 @@ exports.createcartorder = async (req, res) => {
 
 exports.updatecartorder = async (req, res) => {
   const { userId, orderId } = req.params;
-  const { paymentId, success } = req.body;
+  const { paymentId, success, paymentmode } = req.body;
   try {
     const user = await User.findById(userId);
     if (!user) {
@@ -194,7 +194,13 @@ exports.updatecartorder = async (req, res) => {
       const o = await Order.findById(orderId);
       await Order.updateOne(
         { _id: o._id },
-        { $set: { currentStatus: success, paymentId: paymentId } }
+        {
+          $set: {
+            currentStatus: success,
+            paymentId: paymentId,
+            paymentMode: paymentmode,
+          },
+        }
       );
       await User.updateOne({ _id: user._id }, { $unset: { cart: [] } });
       await res.status(200).json({ success: true });
