@@ -208,7 +208,7 @@ exports.getallads = async (req, res) => {
       const ads = await Ads.find({ creator: user._id });
       for (let i = 0; i < ads.length; i++) {
         const a = await generatePresignedUrl(
-          "Ads",
+          "ads",
           ads[i].content.toString(),
           60 * 60
         );
