@@ -257,9 +257,9 @@ exports.fetchfeed = async (req, res) => {
       if (
         post[i].likedby?.some((id) => id.toString() === user._id.toString())
       ) {
-        liked.push(post[i]._id);
+        liked.push(true);
       } else {
-        liked.push("not liked");
+        liked.push(false);
       }
     }
 
@@ -285,6 +285,7 @@ exports.fetchfeed = async (req, res) => {
         );
         dps.push(a);
       }
+
       const urls = [];
       for (let i = 0; i < post.length; i++) {
         const a = await generatePresignedUrl(
@@ -294,6 +295,7 @@ exports.fetchfeed = async (req, res) => {
         );
         urls.push(a);
       }
+
       let current = [];
       const memdps = [];
       for (let i = 0; i < post.length; i++) {
